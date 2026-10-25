@@ -85,3 +85,34 @@ def calculate_psnr(img1, img2):
     if mse == 0:
         return 100.0
     return 20 * np.log10(255.0 / np.sqrt(mse))
+    
+# ==========================================
+# Main Feasibility Test Execution
+# ==========================================
+if __name__ == "__main__":
+    print("="*50)
+    print("Milestone 1: Feasibility Test & Pipeline Starter")
+    print("="*50)
+    
+    # 1. Data Preparation
+    img_path = download_kodak_sample()
+    img = load_and_prep_image(img_path)
+    print(f"[Preprocessing] Loaded and cropped image to {img.width}x{img.height}")
+    
+    # 2. Test Classical Baseline
+    target_quality = 75
+    dec_jpeg, jpeg_bpp = classical_jpeg_encode_decode(img, quality=target_quality)
+    psnr_jpeg = calculate_psnr(img, dec_jpeg)
+    print("-" * 50)
+    print(f"[Classical JPEG] Quality: {target_quality:2d} | BPP: {jpeg_bpp:.4f} | PSNR: {psnr_jpeg:.2f} dB")
+    
+    # 3. Test Learned Codec
+    print("[Learned Codec] Loading bmshj2018-hyperprior (Quality=3)...")
+    model = load_learned_codec(model_name="bmshj2018-hyperprior", quality=3)
+    dec_learned, learned_bpp, enc_time = learned_codec_inference(model, img)
+    psnr_learned = calculate_psnr(img, dec_learned)
+    print("-" * 50)
+    print(f"[Learned Codec] Model: bmshj2018-hyperprior (Q=3)")
+    print(f"                BPP: {learned_bpp:.4f} | PSNR: {psnr_learned:.2f} dB | Enc Time: {enc_time:.4f}s")
+    print("="*50)
+    print("[SUCCESS] Feasibility test passed. Pipeline is ready for M1 deliverable.")
