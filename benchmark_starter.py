@@ -73,3 +73,15 @@ def learned_codec_inference(model, img):
     decoded_img = Image.fromarray((decoded_x * 255.0).astype(np.uint8))
     
     return decoded_img, bpp, encode_time
+    
+# ==========================================
+# Student C: Evaluation Harness
+# ==========================================
+def calculate_psnr(img1, img2):
+    """Simple PSNR calculation."""
+    arr1 = np.array(img1, dtype=np.float32)
+    arr2 = np.array(img2, dtype=np.float32)
+    mse = np.mean((arr1 - arr2) ** 2)
+    if mse == 0:
+        return 100.0
+    return 20 * np.log10(255.0 / np.sqrt(mse))
