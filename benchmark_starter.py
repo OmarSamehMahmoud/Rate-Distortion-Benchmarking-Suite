@@ -5,6 +5,7 @@ from PIL import Image
 import urllib.request
 import time
 import io
+import math
 
 # ==========================================
 # Student A: Data & Baseline Setup
@@ -42,7 +43,7 @@ def classical_jpeg_encode_decode(img, quality=75):
     decoded_img = Image.open(buffer).convert("RGB")
     bpp = (file_size * 8) / (img.width * img.height)
     return decoded_img, bpp
-    
+
 # ==========================================
 # Student B: Model/Algorithm Integration
 # ==========================================
@@ -51,7 +52,7 @@ def load_learned_codec(model_name="bmshj2018-hyperprior", quality=3):
     try:
         from compressai.zoo import image_models
         model = image_models[model_name](quality=quality, pretrained=True)
-        model.eval()
+        model.eval() # Crucial for inference mode
         return model
     except ImportError:
         print("[Error] CompressAI not installed. Run: pip install compressai")
@@ -66,14 +67,20 @@ def learned_codec_inference(model, img):
         out = model(x)
     encode_time = time.time() - start_time
     
-    bpp = out["bpp_loss"].item()
+    # FIX: Calculate bpp from likelihoods (Official CompressAI evaluation method)
+    # "bpp_loss" is only for training. During inference, we calculate from "likelihoods".
+    num_pixels = x.size(2) * x.size(3) # Height * Width
+    bpp = sum(
+        (torch.log(likelihoods).sum() / (-math.log(2) * num_pixels))
+        for likelihoods in out["likelihoods"].values()
+    )
     
     # Reconstruct image
     decoded_x = out["x_hat"].clamp(0, 1).squeeze(0).permute(1, 2, 0).numpy()
     decoded_img = Image.fromarray((decoded_x * 255.0).astype(np.uint8))
     
-    return decoded_img, bpp, encode_time
-    
+    return decoded_img, bpp.item(), encode_time
+
 # ==========================================
 # Student C: Evaluation Harness
 # ==========================================
@@ -85,7 +92,7 @@ def calculate_psnr(img1, img2):
     if mse == 0:
         return 100.0
     return 20 * np.log10(255.0 / np.sqrt(mse))
-    
+
 # ==========================================
 # Main Feasibility Test Execution
 # ==========================================
