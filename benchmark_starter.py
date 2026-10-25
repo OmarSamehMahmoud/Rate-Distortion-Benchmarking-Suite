@@ -42,3 +42,34 @@ def classical_jpeg_encode_decode(img, quality=75):
     decoded_img = Image.open(buffer).convert("RGB")
     bpp = (file_size * 8) / (img.width * img.height)
     return decoded_img, bpp
+    
+# ==========================================
+# Student B: Model/Algorithm Integration
+# ==========================================
+def load_learned_codec(model_name="bmshj2018-hyperprior", quality=3):
+    """Loads a pretrained model from CompressAI."""
+    try:
+        from compressai.zoo import image_models
+        model = image_models[model_name](quality=quality, pretrained=True)
+        model.eval()
+        return model
+    except ImportError:
+        print("[Error] CompressAI not installed. Run: pip install compressai")
+        exit(1)
+
+def learned_codec_inference(model, img):
+    """Runs inference and returns decoded image, bpp, and encode time."""
+    x = torch.from_numpy(np.array(img)).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+    
+    start_time = time.time()
+    with torch.no_grad():
+        out = model(x)
+    encode_time = time.time() - start_time
+    
+    bpp = out["bpp_loss"].item()
+    
+    # Reconstruct image
+    decoded_x = out["x_hat"].clamp(0, 1).squeeze(0).permute(1, 2, 0).numpy()
+    decoded_img = Image.fromarray((decoded_x * 255.0).astype(np.uint8))
+    
+    return decoded_img, bpp, encode_time
